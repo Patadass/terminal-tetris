@@ -1,0 +1,2 @@
+board width = 10
+board height = 20
