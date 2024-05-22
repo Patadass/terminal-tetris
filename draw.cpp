@@ -1,4 +1,4 @@
-   #include <iostream>
+#include <iostream>
 #include "draw.h"
 
 HANDLE Draw::h_console = GetStdHandle(STD_OUTPUT_HANDLE);
