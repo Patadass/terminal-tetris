@@ -8,7 +8,6 @@
 #define CONTAINER_WIDTH 10
 #define CONTAINER_HEIGHT 20
 
-//TODO:Add line clears
 
 class Tetris{
 private:
