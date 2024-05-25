@@ -2,398 +2,54 @@
 #include <windows.h>
 #include <chrono>
 #include <thread>
+#include <random>
 
 #include "draw.h"
+#include "tetris.h"
 
 using namespace std;
 
-const int CONTAINER_WIDTH = 10;
-const int CONTAINER_HEIGHT = 20;
-
-class Container{
+class Piece{
 private:
-    static int container_width;
-    static int container_height;
-    static int starting_x,staring_y;
-    static WORD container_color;
-    static short map[CONTAINER_HEIGHT][CONTAINER_WIDTH];
+    int i,j,prev_i,state,keyCode,piece_num;
+    bool is_done = false;
 public:
-    static void generate_map() {
-        for(int i = 0;i < CONTAINER_HEIGHT;i++){
-            for(int j = 0;j < CONTAINER_WIDTH;j++){
-                map_zero(i,j);
-            }
-        }
+    Piece() = default;
+    Piece(int _i,int _j,int _prev_i,int _state,int _keyCode,int _piece_num){
+        i = _i;
+        j = _j;
+        prev_i = _prev_i;
+        state = _state;
+        keyCode = _keyCode;
+        piece_num = _piece_num;
     }
-    static void draw_container() {
-        Draw::set_color(container_color);
-        Draw::draw_rect(starting_x,staring_y,container_width,container_height);
-        Draw::reset_color();
+    void set(int _i,int _prev_i,int _key_code){
+        i = _i;
+        prev_i = _prev_i;
+        keyCode = _key_code;
     }
-
-    static void map_put(int i,int j,int n = 1) {
-        Container::map[i][j] = short(n);
+    void reset(int _i,int _j,int _prev_i,int _state,int _keyCode,int _piece_num){
+        i = _i;
+        j = _j;
+        prev_i = _prev_i;
+        state = _state;
+        keyCode = _keyCode;
+        piece_num = _piece_num;
+        is_done = false;
     }
-    static short map_pull(int i,int j) {
-        return Container::map[i][j];
+    void change_piece(int _piece_num){
+        piece_num = _piece_num;
     }
-    static void map_zero(int i,int j) {
-        Container::map[i][j] = 0;
-    }
-    static bool is_out_of_bounds(int i,int j){
-        if(i >= CONTAINER_HEIGHT || i < 0){
-            return true;
-        }
-        if(j >= CONTAINER_WIDTH || j < 0){
-            return true;
-        }
-        return false;
-    }
-
-    //o
-    static void map_put_o_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_o_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_o_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    //i
-    static void map_put_i_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_i_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_i_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    //t
-    static void map_put_t_block(int starting_i,int starting_j,int state = 0);//state is the rotation of the block
-    static void map_zero_t_block(int starting_i,int starting_j,int state = 0);//state is the rotation of the block
-    static int map_check_collision_t_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    //j
-    static void map_put_j_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_j_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_j_block(int starting_i,int starting_j,int state = 0);
-    //
-    
-    //l
-    static void map_put_l_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_l_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_l_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    //s
-    static void map_put_s_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_s_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_s_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    //z
-    static void map_put_z_block(int starting_i,int starting_j,int state = 0);
-    static void map_zero_z_block(int starting_i,int starting_j,int state = 0);
-    static int map_check_collision_z_block(int starting_i,int starting_j,int state = 0);
-    //
-
-    static int get_height(){return Container::container_height;}
-    static int get_width(){return Container::container_width;}
-    static int get_starting_x(){return Container::starting_x;}
-    static int get_starting_y(){return Container::staring_y;}
+    void set_done(bool _is_done){is_done = _is_done;}
+    bool get_is_done(){return is_done;}
+    friend Piece game_event(Piece piece);
 };
-short Container::map[CONTAINER_HEIGHT][CONTAINER_WIDTH];
-int Container::container_height = CONTAINER_HEIGHT + 2, Container::container_width = CONTAINER_WIDTH + 2;
-int Container::starting_x = 0,Container::staring_y = 0;
-WORD Container::container_color = BACKGROUND_WHITE;
 
-//   put
-// 1 = O block
-// 2 = I block
-// 3 = T block
-// 4 = J block
-// 5 = L block
-// 6 = S block
-// 7 = Z block
-
-void Container::map_put_o_block(int starting_i,int starting_j,int state) {
-    int i = starting_i,j = starting_j;
-    map_put(i,j,1);
-    map_put(i,j+1,1);
-    map_put(i+1,j),1;
-    map_put(i+1,j+1,1);
-}
-void Container::map_zero_o_block(int starting_i,int starting_j,int state) {
-    int i = starting_i,j = starting_j;
-    map_zero(i,j);
-    map_zero(i,j+1);
-    map_zero(i+1,j);
-    map_zero(i+1,j+1);
-}
-int Container::map_check_collision_o_block(int starting_i, int starting_j, int state) {
-    //0 means block cant go down
-    //1 means block cant go left
-    //2 means block cant go right
-    //4 means block can go anywhere
-    //5 means block has hit another block below
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-    if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+2) >= 1|| is_out_of_bounds(i,j+2)){code+=2;}
-    if(map_pull(i+2,j) >= 1 || map_pull(i+2,j+1) >= 1){return 0;}
-    if(is_out_of_bounds(i+2,0)){return 0;}
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_i_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_put(i,j,2); map_put(i,j+1,2); map_put(i,j+2,2); map_put(i,j+3,2);}
-    if(state == 1 || state == 3){map_put(i,j,2); map_put(i+1,j,2); map_put(i+2,j,2); map_put(i+3,j,2);}
-}
-void Container::map_zero_i_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_zero(i,j); map_zero(i,j+1); map_zero(i,j+2); map_zero(i,j+3);}
-    if(state == 1 || state == 3){map_zero(i,j); map_zero(i+1,j); map_zero(i+2,j); map_zero(i+3,j);}
-}
-int Container::map_check_collision_i_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0 || state == 2){
-        if(map_pull(i,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+4) >= 1 || is_out_of_bounds(i,j+4)){code+=2;}
-        if(map_pull(i+1,j) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+1,j+3) >= 1 ||
-                is_out_of_bounds(i+1,j)){return 0;}
-        if(is_out_of_bounds(i+1,j)){return 0;}
-    }
-    if(state == 1 || state == 3){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j-1) >= 1 || map_pull(i+3,j-1) >= 1 ||
-                is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+1) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+3,j+1) >= 1 ||
-           is_out_of_bounds(i,j+1)){code+=2;}
-        if(map_pull(i+4,j) >= 1){return 0;}
-        if(is_out_of_bounds(i+4,j) == 1){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_t_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_put(i,j+1,3); map_put(i+1,j,3); map_put(i+1,j+1,3); map_put(i+1,j+2,3);}
-    if(state == 1){map_put(i,j+1,3); map_put(i+1,j+1,3); map_put(i+1,j+2,3); map_put(i+2,j+1,3);}
-    if(state == 2){map_put(i+1,j,3); map_put(i+1,j+1,3); map_put(i+1,j+2,3); map_put(i+2,j+1,3);}
-    if(state == 3){map_put(i,j+1,3); map_put(i+1,j,3); map_put(i+1,j+1,3); map_put(i+2,j+1,3);}
-}
-
-void Container::map_zero_t_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_zero(i,j+1); map_zero(i+1, j); map_zero(i+1,j+1); map_zero(i+1,j+2);}
-    if(state == 1){map_zero(i,j+1); map_zero(i+1,j+1); map_zero(i+1,j+2); map_zero(i+2,j+1);}
-    if(state == 2){map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+1,j+2); map_zero(i+2,j+1);}
-    if(state == 3){map_zero(i,j+1); map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+2,j+1);}
-}
-
-int Container::map_check_collision_t_block(int starting_i, int starting_j, int state) {
-    //0 means block cant go down
-    //1 means block cant go left
-    //2 means block cant go right
-    //4 means block can go anywhere
-    //5 means block has hit another block below
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j-1) >= 1 || is_out_of_bounds(i+1,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+3) >= 1 || is_out_of_bounds(i+1,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,0)){return 0;}
-    }
-    if(state == 1){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j) >= 1 || map_pull(i+2,j) >= 1 || is_out_of_bounds(0,j)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+3) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i+1,j+3)){code+=2;}
-        if(map_pull(i+3,j+1) >= 1 || map_pull(i+2,j+2)){return 0;}
-        if(is_out_of_bounds(i+3,0)){return 0;}
-    }
-    if(state == 2){
-        if(map_pull(i+1,j-1) >= 1 || map_pull(i+2,j) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i+1,j+3) >= 1 || map_pull(i+2,j+2) >= 1|| is_out_of_bounds(i+1,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+3,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,0)){return 0;}
-    }
-    if(state == 3){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j) >= 1 || is_out_of_bounds(i+1,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i,j+2)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+3,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,0)){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_j_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_put(i,j,4); map_put(i+1,j,4); map_put(i+1,j+1,4); map_put(i+1,j+2,4);}
-    if(state == 1){map_put(i,j,4); map_put(i,j+1,4); map_put(i+1,j,4); map_put(i+2,j,4);}
-    if(state == 2){map_put(i,j); map_put(i,j+1); map_put(i,j+2); map_put(i+1,j+2);}
-    if(state == 3){map_put(i,j+1,4); map_put(i+1,j+1,4); map_put(i+2,j); map_put(i+2,j+1,4);}
-}
-void Container::map_zero_j_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_zero(i,j); map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+1,j+2);}
-    if(state == 1){map_zero(i,j); map_zero(i,j+1); map_zero(i+1,j); map_zero(i+2,j);}
-    if(state == 2){map_zero(i,j); map_zero(i,j+1); map_zero(i,j+2); map_zero(i+1,j+2);}
-    if(state == 3){map_zero(i,j+1); map_zero(i+1,j+1); map_zero(i+2,j); map_zero(i+2,j+1);}
-}
-int Container::map_check_collision_j_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i+1,j+3) >= 1 || map_pull(i,j+1) >= 1 || is_out_of_bounds(i+1,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,j)){return 0;}
-
-    }
-    if(state == 1){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+2,j+1) >= 1 || is_out_of_bounds(i,j+2)){code+=2;}
-        if(map_pull(i+3,j) >= 1 || map_pull(i+1,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j)){return 0;}
-    }
-    if(state == 2){
-        if(map_pull(i,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+3) >= 1 || map_pull(i+1,j+3) >= 1 || is_out_of_bounds(i,j+3)){code+=2;}
-        if(map_pull(i+1,j) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,j+2)){return 0;}
-    }
-    if(state == 3){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j) >= 1 || map_pull(i+2,j-1) >= 1 || is_out_of_bounds(i+2,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i,j+2)){code+=2;}
-        if(map_pull(i+3,j) >= 1 || map_pull(i+3,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j)){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_l_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_put(i,j+2,5); map_put(i+1,j,5); map_put(i+1,j+1,5); map_put(i+1,j+2,5);}
-    if(state == 1){map_put(i,j,5); map_put(i+1,j,5); map_put(i+2,j,5); map_put(i+2,j+1,5);}
-    if(state == 2){map_put(i,j,5); map_put(i,j+1,5); map_put(i,j+2,5); map_put(i+1,j,5);}
-    if(state == 3){map_put(i,j,5); map_put(i,j+1,5); map_put(i+1,j+1,5); map_put(i+2,j+1,5);}
-}
-void Container::map_zero_l_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0){map_zero(i,j+2); map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+1,j+2);}
-    if(state == 1){map_zero(i,j); map_zero(i+1,j); map_zero(i+2,j); map_zero(i+2,j+1);}
-    if(state == 2){map_zero(i,j); map_zero(i,j+1); map_zero(i,j+2); map_zero(i+1,j);}
-    if(state == 3){map_zero(i,j); map_zero(i,j+1); map_zero(i+1,j+1); map_zero(i+2,j+1);}
-}
-int Container::map_check_collision_l_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0){
-        if(map_pull(i+1,j-1) >= 1 || map_pull(i,j+1) >= 1 || is_out_of_bounds(i+1,j-1)){code++;}
-        if(map_pull(i,j+3) >= 1 || map_pull(i+1,j+3) >= 1 || is_out_of_bounds(i,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,j)){return 0;}
-    }
-    if(state == 1){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+1) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i+2,j+2)){code+=2;}
-        if(map_pull(i+3,j) >= 1 || map_pull(i+3,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j)){return 0;}
-    }
-    if(state == 2){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+3) >= 1 || map_pull(i+1,j+1) >= 1 || is_out_of_bounds(i,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+1,j+1) >= 1 || map_pull(i+1,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i,j+2)){return 0;}
-    }
-    if(state == 3){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j) >= 1 || map_pull(i+2,j) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i,j+2)){code+=2;}
-        if(map_pull(i+1,j) >= 1 || map_pull(i+3,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j+1)){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_s_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_put(i,j+1,6); map_put(i,j+2,6); map_put(i+1,j,6); map_put(i+1,j+1,6);}
-    if(state == 1 || state == 3){map_put(i,j,6); map_put(i+1,j,6); map_put(i+1,j+1,6); map_put(i+2,j+1,6);}
-}
-void Container::map_zero_s_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_zero(i,j+1); map_zero(i,j+2); map_zero(i+1,j); map_zero(i+1,j+1);}
-    if(state == 1 || state == 3){map_zero(i,j); map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+2,j+1);}
-}
-int Container::map_check_collision_s_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0 || state == 2){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j-1) >= 1 || is_out_of_bounds(i+1,j-1)){code++;}
-        if(map_pull(i,j+3) >= 1 || map_pull(i+1,j+2) >= 1 || is_out_of_bounds(i,j+3)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+1,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,j)){return 0;}
-    }
-    if(state == 1 || state == 3){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+1) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+2,j+2) >= 1 || is_out_of_bounds(i+1,j+2)){code+=2;}
-        if(map_pull(i+2,j) >= 1 || map_pull(i+3,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j+1)){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void Container::map_put_z_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_put(i,j,7); map_put(i,j+1,7); map_put(i+1,j+1,7); map_put(i+1,j+2,7);}
-    if(state == 1 || state == 3){map_put(i,j+1,7); map_put(i+1,j,7); map_put(i+1,j+1,7); map_put(i+2,j,7);}
-}
-void Container::map_zero_z_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    if(state == 0 || state == 2){map_zero(i,j); map_zero(i,j+1); map_zero(i+1,j+1); map_zero(i+1,j+2);}
-    if(state == 1 || state == 3){map_zero(i,j+1); map_zero(i+1,j); map_zero(i+1,j+1); map_zero(i+2,j);}
-}
-int Container::map_check_collision_z_block(int starting_i, int starting_j, int state) {
-    int i = starting_i,j = starting_j;
-    int code = 0;
-    if(state == 0 || state == 2){
-        if(map_pull(i,j-1) >= 1 || map_pull(i+1,j) >= 1 || is_out_of_bounds(i,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+3) >= 1 || is_out_of_bounds(i+1,j+3)){code+=2;}
-        if(map_pull(i+1,j) >= 1 || map_pull(i+2,j+1) >= 1 || map_pull(i+2,j+2) >= 1){return 0;}
-        if(is_out_of_bounds(i+2,j+1)){return 0;}
-    }
-    if(state == 1 || state == 3){
-        if(map_pull(i,j) >= 1 || map_pull(i+1,j-1) >= 1 || map_pull(i+2,j-1) >= 1 || is_out_of_bounds(i+1,j-1)){code++;}
-        if(map_pull(i,j+2) >= 1 || map_pull(i+1,j+2) >= 1 || map_pull(i+2,j+1) >= 1 || is_out_of_bounds(i,j+2)){code+=2;}
-        if(map_pull(i+3,j) >= 1 || map_pull(i+2,j+1) >= 1){return 0;}
-        if(is_out_of_bounds(i+3,j)){return 0;}
-    }
-    if(code == 0){code = 4;}
-    return code;
-}
-
-void draw_on_container(int i,int j) {
-    Draw::draw_rect(Container::get_starting_x()+j+1, Container::get_starting_y() + i + 1, 1, 1);
-}
-
-void draw_from_map() {
-    for(int i = 0;i < CONTAINER_HEIGHT;i++){
-        for(int j = 0;j < CONTAINER_WIDTH;j++){
-            if(Container::map_pull(i,j) == 1){Draw::set_color(BACKGROUND_LIGHT_YELLOW);}
-            if(Container::map_pull(i,j) == 2){Draw::set_color(BACKGROUND_LIGHT_BLUE);}
-            if(Container::map_pull(i,j) == 3){Draw::set_color(BACKGROUND_PURPLE);}
-            if(Container::map_pull(i,j) == 4){Draw::set_color(BACKGROUND_BLUE);}
-            if(Container::map_pull(i,j) == 5){Draw::set_color(BACKGROUND_YELLOW);}
-            if(Container::map_pull(i,j) == 6){Draw::set_color(BACKGROUND_GREEN);}
-            if(Container::map_pull(i,j) == 7){Draw::set_color(BACKGROUND_RED);}
-            if(Container::map_pull(i,j) == 0){
-                Draw::set_color(BACKGROUND_BLACK);
-            }
-            draw_on_container(i,j);
-        }
-    }
+int random(int from, int to){
+    unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+    default_random_engine generator(seed);
+    uniform_int_distribution<int> distribution(from, to);
+    return distribution(generator);
 }
 
 void tick(){this_thread::sleep_for(chrono::milliseconds(10));}
@@ -414,78 +70,228 @@ void keyHandle(int *keyCode){
     }
 }
 
+Piece game_event(Piece piece){
+    // 1 = O block
+    // 2 = I block
+    // 3 = T block
+    // 4 = J block
+    // 5 = L block
+    // 6 = S block
+    // 7 = Z block
+    bool can_right = false, can_left = false;
+    if(piece.piece_num == 1){
+        Tetris::map_zero_o_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_o_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_o_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_o_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_o_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_o_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_o_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_o_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_o_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 2){
+        Tetris::map_zero_i_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_i_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_i_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_i_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_i_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_i_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_i_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_i_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_i_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 3){
+        Tetris::map_zero_t_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_t_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_t_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_t_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_t_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_t_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_t_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_t_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_t_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 4){
+        Tetris::map_zero_j_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_j_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_j_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_j_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_j_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_j_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_j_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_j_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_j_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 5){
+        Tetris::map_zero_l_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_l_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_l_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_l_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_l_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_l_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_l_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_l_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_l_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 6){
+        Tetris::map_zero_s_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_s_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_s_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_s_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_s_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_s_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_s_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_s_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_s_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    if(piece.piece_num == 7){
+        Tetris::map_zero_z_block(piece.prev_i,piece.j,piece.state);
+        if (Tetris::map_check_collision_z_block(piece.i,piece.j,piece.state) != 1 &&
+            Tetris::map_check_collision_z_block(piece.i,piece.j,piece.state) != 3 &&
+            Tetris::map_check_collision_z_block(piece.i,piece.j,piece.state) != 0) {
+            can_left = true;
+        }
+        if (Tetris::map_check_collision_z_block(piece.i, piece.j, piece.state) != 2 &&
+            Tetris::map_check_collision_z_block(piece.i, piece.j, piece.state) != 3 &&
+            Tetris::map_check_collision_z_block(piece.i, piece.j, piece.state) != 0) {
+            can_right = true;
+        }
+        if(can_left && piece.keyCode == 1){piece.j--;}
+        if(can_right && piece.keyCode == 2){piece.j++;}
+        if(piece.keyCode == 3){
+            if(piece.state == 3){piece.state = 0;}
+            else{piece.state++;}
+        }
+        piece.keyCode = 0;
+        Tetris::map_put_z_block(piece.i,piece.j,piece.state);
+        if(Tetris::map_check_collision_z_block(piece.i,piece.j,piece.state) == 0){
+            piece.set_done(true);
+        }
+    }
+    Tetris::draw_from_map();
+    return piece;
+}
+
 void event() {//testing
     int j = 4;
     int prev_i = 0;
     int state = 0;
+    int piece_num = random(1,7);
 
     int keyCode = 0;
 
     auto *t1 = new thread(keyHandle,&keyCode);
-
+    Piece piece(0,j,prev_i,state,keyCode,piece_num);
     for(int i = 0;;i++){
         t1->join();
-        Container::map_zero_z_block(prev_i,j,state);
-        if(keyCode == 1) {
-            if (Container::map_check_collision_z_block(i, j, state) != 1 &&
-                Container::map_check_collision_z_block(i, j, state) != 3 &&
-                Container::map_check_collision_z_block(i, j, state) != 0) {
-                j--;
-            }
-            keyCode = 0;
+        piece.set(i,prev_i,keyCode);
+        keyCode = 0;
+        piece = game_event(piece);
+        if(piece.get_is_done()){
+            Tetris::line_manager();
+            piece_num = random(1,7);
+            i = -1;j = 4;prev_i = -1;state = 0;keyCode = 0;
+            piece.reset(i,j,prev_i,state,keyCode,piece_num);
         }
-        if(keyCode == 2) {
-            if (Container::map_check_collision_z_block(i, j, state) != 2 &&
-                Container::map_check_collision_z_block(i, j, state) != 3 &&
-                Container::map_check_collision_z_block(i, j, state) != 0) {
-                j++;
-            }
-            keyCode = 0;
-        }
-        if(keyCode == 3){
-            if(state == 3){
-                state = 0;
-            }else{
-                state++;
-            }
-            keyCode = 0;
-        }
-        Container::map_put_z_block(i,j,state);
-        draw_from_map();
+        prev_i = i;
         Draw::setxy(13,1);
         for(int k = 0;k < 20;k++){
             for(int m = 0;m < 10;m++){
-                cout<<Container::map_pull(k,m);
+                Draw::reset_color();
+                cout<<Tetris::map_pull(k,m);
             }
             Draw::setxy(13,k+2);
         }
-
         Draw::setxy(13,21);
-        cout<<i<<" "<<j<<" "<<Container::map_check_collision_z_block(i,j,state)<<" "<<state;
-        //Draw::setxy(0,Container::get_height()+ Container::get_starting_y());
-        //system("pause");
+        cout<<i<<" "<<j<<" "<<Tetris::map_check_collision_z_block(i,j,state)<<" "<<state;
         t1 = new thread(keyHandle,&keyCode);
-        //this_thread::sleep_for(chrono::milliseconds(200));
-        if(Container::map_check_collision_z_block(i,j,state) == 0){
-            break;
-        }
-        prev_i = i;
     }
 }
 
 int main() {
-    Container::draw_container();
-    Container::generate_map();
-    for(int i = 0;i < 20;i++){
-        if(i > 9 && i < 13){
-            continue;
-        }
-        Container::map_put(i,0);
-        Container::map_put(i,9);
-    }
-    Container::map_put_t_block(18,4,0);
+    Tetris::draw_container();
+    Tetris::generate_map();
     event();
-    Draw::setxy(0,Container::get_height()+ Container::get_starting_y());
+    Draw::setxy(0,Tetris::get_height()+ Tetris::get_starting_y());
     system("pause");
     return 0;
 }
