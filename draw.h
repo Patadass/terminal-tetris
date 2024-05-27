@@ -14,6 +14,8 @@ class Draw{
 private:
 public:
     static HANDLE h_console;
+    static void show_console_cursor(bool show);
+
     static BOOL setxy(short x, short y);
     static BOOL setxy(int x,int y);
     static void set_color(WORD w);
@@ -21,8 +23,6 @@ public:
 
     static void draw_fill_rect(int x, int y, int width,int height);
     static void draw_rect(int x,int y,int width,int height);
-
-    static void draw_o_block(int x,int y,int width = 2,int height = 2);
 };
 
 #endif //TETRIS_DRAW_H

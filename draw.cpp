@@ -3,6 +3,13 @@
 
 HANDLE Draw::h_console = GetStdHandle(STD_OUTPUT_HANDLE);
 
+void Draw::show_console_cursor(bool show) {
+    CONSOLE_CURSOR_INFO cursor_info;
+    GetConsoleCursorInfo(h_console,&cursor_info);
+    cursor_info.bVisible = show;
+    SetConsoleCursorInfo(h_console,&cursor_info);
+}
+
 BOOL Draw::setxy(short x, short y) {
     COORD c = {x,y};
     return SetConsoleCursorPosition(h_console, c);
@@ -33,8 +40,4 @@ void Draw::draw_rect(int x, int y, int width, int height) {
             }
         }
     }
-}
-
-void Draw::draw_o_block(int x, int y, int width, int height) {
-    draw_rect(x,y,width,height);
 }

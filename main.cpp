@@ -14,7 +14,10 @@ private:
     int i,j,prev_i,state,keyCode,piece_num;
     bool is_done = false;
 public:
-    Piece() = default;
+    Piece(){
+        i = j = prev_i = state = keyCode = piece_num = 0;
+        is_done = false;
+    }
     Piece(int _i,int _j,int _prev_i,int _state,int _keyCode,int _piece_num){
         i = _i;
         j = _j;
@@ -42,6 +45,8 @@ public:
     }
     void set_done(bool _is_done){is_done = _is_done;}
     bool get_is_done(){return is_done;}
+    int get_state(){return state;}
+    int get_piece_num(){return piece_num;}
     friend Piece game_event(Piece piece);
 };
 
@@ -52,23 +57,7 @@ int random(int from, int to){
     return distribution(generator);
 }
 
-void tick(){this_thread::sleep_for(chrono::milliseconds(10));}
 
-void keyHandle(int *keyCode){
-    for(int i = 0;i < 40;i++){
-        thread t1(tick);
-        if(GetKeyState(0x41) & 0x8000){// 0x41 = A
-            *keyCode = 1;
-        }
-        if(GetKeyState(0x44) & 0x8000){// 0x44 = D
-            *keyCode = 2;
-        }
-        if(GetKeyState(0x57) & 0x8000){
-            *keyCode = 3;
-        }
-        t1.join();
-    }
-}
 
 Piece game_event(Piece piece){
     // 1 = O block
@@ -251,16 +240,37 @@ Piece game_event(Piece piece){
     return piece;
 }
 
+void tick(){this_thread::sleep_for(chrono::milliseconds(2));}
+
+void keyHandle(int *keyCode){
+    for(int i = 0;i < 20;i++){
+        thread t1(tick);
+        if(GetKeyState(0x41) & 0x8000){// 0x41 = A
+            *keyCode = 1;
+        }
+        if(GetKeyState(0x44) & 0x8000){// 0x44 = D
+            *keyCode = 2;
+        }
+        if(GetKeyState(0x57) & 0x8000){
+            *keyCode = 3;
+        }
+        t1.join();
+    }
+}
+
 void event() {//testing
     int j = 4;
     int prev_i = 0;
     int state = 0;
     int piece_num = random(1,7);
+    int next_piece_num = random(1,7);
 
     int keyCode = 0;
 
     auto *t1 = new thread(keyHandle,&keyCode);
     Piece piece(0,j,prev_i,state,keyCode,piece_num);
+    Piece next_piece(0,j,prev_i,state,keyCode,next_piece_num);
+    Tetris::draw_on_np_container(next_piece.get_piece_num());
     for(int i = 0;;i++){
         t1->join();
         piece.set(i,prev_i,keyCode);
@@ -268,27 +278,32 @@ void event() {//testing
         piece = game_event(piece);
         if(piece.get_is_done()){
             Tetris::line_manager();
-            piece_num = random(1,7);
+            piece = next_piece;
+            next_piece_num = random(1,7);
             i = -1;j = 4;prev_i = -1;state = 0;keyCode = 0;
-            piece.reset(i,j,prev_i,state,keyCode,piece_num);
+            next_piece.reset(i,j,prev_i,state,keyCode,next_piece_num);
+            Tetris::draw_on_np_container(next_piece.get_piece_num());
         }
         prev_i = i;
-        Draw::setxy(13,1);
+        Draw::setxy(25,1);
         for(int k = 0;k < 20;k++){
             for(int m = 0;m < 10;m++){
                 Draw::reset_color();
                 cout<<Tetris::map_pull(k,m);
             }
-            Draw::setxy(13,k+2);
+            Draw::setxy(25,k+2);
         }
-        Draw::setxy(13,21);
-        cout<<i<<" "<<j<<" "<<Tetris::map_check_collision_z_block(i,j,state)<<" "<<state;
+        Draw::setxy(25,21);
+        cout<<i<<" "<<j<<" "<<Tetris::map_check_collision_z_block(i,j,piece.get_state())<<" "<<piece.get_state();
         t1 = new thread(keyHandle,&keyCode);
     }
 }
 
 int main() {
+    Draw::show_console_cursor(false);
+    Tetris::queue_start_sequence();
     Tetris::draw_container();
+    Tetris::draw_np_container();
     Tetris::generate_map();
     event();
     Draw::setxy(0,Tetris::get_height()+ Tetris::get_starting_y());

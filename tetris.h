@@ -1,5 +1,8 @@
 #include <iostream>
 #include <windows.h>
+#include <thread>
+#include <chrono>
+
 #include "draw.h"
 
 #ifndef TETRIS_TETRIS_H
@@ -11,15 +14,17 @@
 
 class Tetris{
 private:
-    static int container_width;
-    static int container_height;
+    static int container_width, container_height;
     static int starting_x,staring_y;
     static WORD container_color;
     static short map[CONTAINER_HEIGHT][CONTAINER_WIDTH];
 public:
+    static void queue_start_sequence();
     static void generate_map();
     static void draw_container();
     static void draw_on_container(int i,int j);
+    static void draw_np_container();
+    static void draw_on_np_container(int piece);
     static void draw_from_map();
     static void map_put(int i,int j,int n = 1);
     static short map_pull(int i,int j);

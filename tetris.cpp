@@ -1,9 +1,60 @@
 #include "tetris.h"
 
+
 short Tetris::map[CONTAINER_HEIGHT][CONTAINER_WIDTH];
 int Tetris::container_height = CONTAINER_HEIGHT + 2, Tetris::container_width = CONTAINER_WIDTH + 2;
 int Tetris::starting_x = 0,Tetris::staring_y = 0;
 WORD Tetris::container_color = BACKGROUND_WHITE;
+
+void Tetris::queue_start_sequence() {
+    int x = 16,y = 10;//t
+    Draw::set_color(BACKGROUND_LIGHT_BLUE);
+    Draw::draw_fill_rect(x,y,18,3);
+    Draw::draw_fill_rect(x+6,y+3,6,8);
+    x = x+20;//e
+    Draw::set_color(BACKGROUND_RED);
+    Draw::draw_fill_rect(x,y,5,11);
+    Draw::draw_fill_rect(x+5,y,8,2);
+    Draw::draw_fill_rect(x+5,y+4,6,3);
+    Draw::draw_fill_rect(x+5,y+9,8,2);
+    x = x+15;//t
+    Draw::set_color(BACKGROUND_LIGHT_BLUE);
+    Draw::draw_fill_rect(x,y,18,3);
+    Draw::draw_fill_rect(x+6,y+3,6,8);
+    x = x+20;//r
+    Draw::set_color(BACKGROUND_YELLOW);
+    Draw::draw_fill_rect(x,y,4,11);
+    Draw::draw_rect(x+3,y,8,5);
+    Draw::draw_rect(x+3,y+1,7,3);
+    Draw::draw_fill_rect(x+3,y+5,4,2);
+    Draw::draw_fill_rect(x+6,y+7,3,2);
+    Draw::draw_fill_rect(x+8,y+9,3,2);
+    x = x+13;//I
+    Draw::set_color(BACKGROUND_GREEN);
+    Draw::draw_fill_rect(x,y,6,11);
+    x = x+8;//S
+    Draw::set_color(BACKGROUND_PURPLE);
+    Draw::draw_fill_rect(x,y,12,3);
+    Draw::draw_fill_rect(x,y+2,6,4);
+    Draw::draw_fill_rect(x,y+4,12,3);
+    Draw::draw_fill_rect(x+6,y+6,6,3);
+    Draw::draw_fill_rect(x,y+8,12,3);
+    x = 14,y-=2;
+    Draw::set_color(BACKGROUND_WHITE);
+    for(int i = x;i < 106;i++){
+        Draw::draw_rect(i,y,1,1);
+        Draw::draw_rect(119-i,y+14,1,1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    for(int j = y;j < 22;j++){
+        Draw::draw_rect(x,30-j,1,1);
+        Draw::draw_rect(x+91,j,1,1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    Draw::reset_color();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    system("cls");
+}
 
 void Tetris::generate_map() {
     for(int i = 0;i < CONTAINER_HEIGHT;i++){
@@ -22,6 +73,60 @@ void Tetris::draw_container() {
 void Tetris::draw_on_container(int i,int j) {
     Draw::draw_rect(Tetris::get_starting_x()+j+1, Tetris::get_starting_y() + i + 1, 1, 1);
 }
+
+void Tetris::draw_np_container() {
+    Draw::set_color(container_color);
+    Draw::draw_rect(starting_x+14,0,7,6);
+    Draw::reset_color();
+}
+
+void Tetris::draw_on_np_container(int piece) {
+    int i = get_starting_x();
+    int j = get_starting_y();
+    Draw::set_color(BACKGROUND_BLACK);
+    Draw::draw_fill_rect(i+15,j+1,5,4);
+    if(piece == 1){
+        i+=17;j+=2;
+        Draw::set_color(BACKGROUND_LIGHT_YELLOW);
+        Draw::draw_rect(i,j,2,2);
+    }
+    if(piece == 2){
+        i+=17;j+=1;
+        Draw::set_color(BACKGROUND_LIGHT_BLUE);
+        Draw::draw_rect(i,j,1,4);
+    }
+    if(piece == 3){
+        i+=17;j+=2;
+        Draw::set_color(BACKGROUND_PURPLE);
+        Draw::draw_rect(i,j,1,1);
+        Draw::draw_rect(i-1,j+1,3,1);
+    }
+    if(piece == 4){
+        i+=17;j+=1;
+        Draw::set_color(BACKGROUND_BLUE);
+        Draw::draw_rect(i,j,1,3);
+        Draw::draw_rect(i-1,j+2,1,1);
+    }
+    if(piece == 5){
+        i+=17;j+=1;
+        Draw::set_color(BACKGROUND_YELLOW);
+        Draw::draw_rect(i,j,1,3);
+        Draw::draw_rect(i+1,j+2,1,1);
+    }
+    if(piece == 6){
+        i+=17;j+=2;
+        Draw::set_color(BACKGROUND_GREEN);
+        Draw::draw_rect(i,j,2,1);
+        Draw::draw_rect(i-1,j+1,2,1);
+    }
+    if(piece == 7){
+        i+=16;j+=2;
+        Draw::set_color(BACKGROUND_RED);
+        Draw::draw_rect(i,j,2,1);
+        Draw::draw_rect(i+1,j+1,2,1);
+    }
+}
+
 void Tetris::draw_from_map() {
     for(int i = 0;i < CONTAINER_HEIGHT;i++){
         for(int j = 0;j < CONTAINER_WIDTH;j++){
@@ -143,11 +248,6 @@ void Tetris::map_zero_t_block(int starting_i, int starting_j, int state) {
 }
 
 int Tetris::map_check_collision_t_block(int starting_i, int starting_j, int state) {
-    //0 means block cant go down
-    //1 means block cant go left
-    //2 means block cant go right
-    //4 means block can go anywhere
-    //5 means block has hit another block below
     int i = starting_i,j = starting_j;
     int code = 0;
     if(state == 0){
