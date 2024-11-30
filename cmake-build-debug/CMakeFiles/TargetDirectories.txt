@@ -1,3 +1,0 @@
-C:/Users/Administrator/CLionProjects/terminal-tetris/cmake-build-debug/CMakeFiles/Tetris.dir
-C:/Users/Administrator/CLionProjects/terminal-tetris/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/Administrator/CLionProjects/terminal-tetris/cmake-build-debug/CMakeFiles/rebuild_cache.dir
